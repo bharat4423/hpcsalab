@@ -1,0 +1,78 @@
+****************Nagios********************
+
+Nagios Installation 
+-----------------------------
+#yum install http://build.openhpc.community/OpenHPC:/1.3/CentOS_7/x86_64/ohpc-release-1.3-1.el7.x86_64.rpm
+#yum -y install ohpc-nagios
+#cd /etc/nagios/
+#htpasswd -bc /etc/nagios/passwd nagiosadmin nagiosadmin
+#systemctl start nagios
+#systemctl status nagios
+#systemctl enable nagios
+#systemctl status httpd
+
+
+Take Machine Ip and put in Web browser 
+
+http://192.168.20.161/nagios/
+
+
+
+Nagios Remote Plugin Executor (NRPE) is a Nagios agent that allows remote system monitoring using scripts that are hosted on the remote systems.
+
+ssh ip -l username
+Example ssh 192.168.20.138 - l root
+
+
+
+C  I  A indepth
+
+Confidently
+Integrity
+Avaibility
+
+PAM
+Zero trust
+IB infinity
+Captcha
+ssh indepth
+BMC indepth
+Tftp and Http diffrance 
+
+
+Types of Attacks 
+IAM indepth
+
+root privilages excalation
+AuditD indepth
+Netfilter indepth
+
+The Slurm Workload Manager, formerly known as Simple Linux Utility for Resource Management (SLURM)
+
+ grep
+ 
+ 
+ systemctl status sshd | grep Active
+ 
+ systemctl status sshd | grep Active: | cut -d " " -f2
+ systemctl status sshd | grep Active: | cut -d " " -f4
+ systemctl status sshd | grep Active: | cut -d " " -f5
+ systemctl status sshd | grep Active: | awk `{print $2}`
+ 
+ cat /etc/passwd | grep -v root
+ cat /etc/passwd | grep root
+ 
+ 
+ cp check_sshd /usr/lib64/nagios/plugins
+ 
+ vim /etc/nagios/config.d/services.cfg
+ 
+ systemctl restart nagios
+ service nrpe restart
+ 
+ *********************Ganglia***********
+ 
+ Public 
+ Private
+ IB (InfiniBand )
+ IPMI (Intelligent Platform Management Interface)
