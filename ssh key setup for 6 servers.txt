@@ -1,0 +1,204 @@
+Excellent 👍 — let’s do this step-by-step manually (no automation yet).
+
+Goal:
+You have 6 RHEL7 Linux servers in Azure, and you want to:
+✅ Connect via Azure Bastion using an SSH key,
+✅ Use the same private key for all servers,
+✅ Allow access for a dbadmin user (no password login).
+
+🧩 STEP-BY-STEP MANUAL SETUP
+Step 1 — Connect to each Linux server (one by one)
+
+You can do this either:
+
+Through Azure Bastion (portal → Connect → Bastion → SSH with your current Azure user), or
+
+Using your current SSH access (e.g., ssh azureuser@<server-ip>).
+
+We’ll perform setup as root or a user with sudo access.
+
+Step 2 — Create the dbadmin user
+
+Run this command on each server:
+
+sudo useradd -m -s /bin/bash dbadmin
+
+
+-m → creates a home directory (/home/dbadmin)
+
+-s /bin/bash → sets shell as bash
+
+Check user created:
+
+id dbadmin
+
+Step 3 — Disable password login for dbadmin
+
+We don’t want dbadmin to log in with a password.
+
+sudo passwd -l dbadmin
+
+
+This locks the password — meaning SSH will only work with a key.
+
+Check:
+
+sudo passwd -S dbadmin
+# Output should include 'L' (for locked)
+
+Step 4 — Generate SSH key pair (on ONE system only)
+
+You can generate this key on your local machine or on one Linux server.
+
+On your local system (recommended):
+ssh-keygen -t rsa -b 4096 -f ~/dbadmin_rsa -C "dbadmin shared key"
+
+
+Press Enter for all prompts (no passphrase needed).
+
+You’ll get:
+
+Private key → ~/dbadmin_rsa
+
+Public key → ~/dbadmin_rsa.pub
+
+Make sure permissions are correct:
+
+chmod 600 ~/dbadmin_rsa
+
+
+✅ Keep this private key safe! You’ll use it to log in later.
+
+Step 5 — Create .ssh directory for dbadmin on all servers
+
+On each of your 6 servers:
+
+sudo mkdir -p /home/dbadmin/.ssh
+sudo chmod 700 /home/dbadmin/.ssh
+sudo chown dbadmin:dbadmin /home/dbadmin/.ssh
+
+
+This prepares the location for the authorized key.
+
+Step 6 — Copy the public key to all servers
+
+Take the contents of your dbadmin_rsa.pub file (the public key).
+You can view it with:
+
+cat ~/dbadmin_rsa.pub
+
+
+Copy that entire line (it starts with ssh-rsa and ends with your comment).
+
+Then, on each server, run:
+
+sudo bash -c 'echo "PASTE_YOUR_PUBLIC_KEY_HERE" >> /home/dbadmin/.ssh/authorized_keys'
+
+
+Example:
+
+sudo bash -c 'echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQ... dbadmin shared key" >> /home/dbadmin/.ssh/authorized_keys'
+
+
+Then fix permissions:
+
+sudo chmod 600 /home/dbadmin/.ssh/authorized_keys
+sudo chown dbadmin:dbadmin /home/dbadmin/.ssh/authorized_keys
+
+Step 7 — Restore SELinux context (important for RHEL7)
+
+Still on each server:
+
+sudo restorecon -Rv /home/dbadmin/.ssh
+
+
+This ensures the SSH daemon can read the keys (important when SELinux is enforcing).
+
+Step 8 — Check SSH configuration
+
+We need to make sure the SSH daemon allows key-based login.
+
+Open and edit /etc/ssh/sshd_config:
+
+sudo vi /etc/ssh/sshd_config
+
+
+Ensure these lines exist and are not commented out (# removed):
+
+PubkeyAuthentication yes
+AuthorizedKeysFile  %h/.ssh/authorized_keys
+PasswordAuthentication no
+
+
+Optionally restrict to only dbadmin:
+
+AllowUsers dbadmin
+
+
+Save and exit :wq
+
+Restart SSH:
+
+sudo systemctl restart sshd
+sudo systemctl status sshd
+
+Step 9 — Test SSH login
+
+From your local machine or Azure Bastion (portal or CLI):
+
+If you’re testing from your machine:
+
+ssh -i ~/dbadmin_rsa dbadmin@<server-ip>
+
+
+✅ If it connects without asking for a password, the setup is successful!
+
+Step 10 — Test on all 6 servers
+
+Repeat the same test for all servers:
+
+ssh -i ~/dbadmin_rsa dbadmin@<server2-ip>
+ssh -i ~/dbadmin_rsa dbadmin@<server3-ip>
+# ... and so on for all six
+
+
+Each should allow direct access via SSH key only (no password prompt).
+
+Step 11 — (Optional) Give dbadmin sudo access (without password)
+
+If dbadmin should run sudo commands:
+
+Create a sudoers file:
+
+sudo visudo -f /etc/sudoers.d/dbadmin
+
+
+Add the line:
+
+dbadmin ALL=(ALL) NOPASSWD:ALL
+
+
+Save and exit (Ctrl+O, Enter, Ctrl+X in nano)
+
+Now dbadmin can run:
+
+sudo yum update -y
+
+
+without entering a password.
+
+Step 12 — Connect through Azure Bastion (Portal)
+
+Go to Azure Portal → your VM → Connect → Bastion
+
+Choose SSH
+
+Under Authentication Type, select SSH Private Key
+
+Paste the contents of your private key (dbadmin_rsa)
+
+Enter username: dbadmin
+
+Click Connect
+
+✅ You should now log in directly to dbadmin shell without any password.
